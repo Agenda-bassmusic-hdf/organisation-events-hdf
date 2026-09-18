@@ -21,6 +21,24 @@ function esc(s) {
 function statusClass(statut) {
   return { "À faire": "afaire", "Programmé": "programme", "Terminé": "termine", "Annulé": "annule" }[statut] || "afaire";
 }
+
+// Palette de couleurs façon "tags" Notion, assignées automatiquement par nom de collectif
+const CREW_PALETTE = [
+  { bg: "#3d2b3f", fg: "#e8a8e0" }, // mauve
+  { bg: "#2b3a3d", fg: "#7fd6e8" }, // cyan
+  { bg: "#3d3a2b", fg: "#e8d27f" }, // jaune
+  { bg: "#2b3d31", fg: "#7fe8a0" }, // vert
+  { bg: "#3d2b2b", fg: "#e88f7f" }, // rouge
+  { bg: "#2b2f3d", fg: "#8fa0e8" }, // bleu
+  { bg: "#3d332b", fg: "#e8b37f" }, // orange
+  { bg: "#332b3d", fg: "#c07fe8" }, // violet
+];
+function crewColor(nom) {
+  if (!nom) return { bg: "#242030", fg: "#9891a8" };
+  let hash = 0;
+  for (let i = 0; i < nom.length; i++) hash = nom.charCodeAt(i) + ((hash << 5) - hash);
+  return CREW_PALETTE[Math.abs(hash) % CREW_PALETTE.length];
+}
 function relativeDate(dateStr) {
   if (!dateStr) return "Date à définir";
   const d = new Date(dateStr + "T00:00:00");
@@ -187,41 +205,64 @@ async function fetchEvenements() {
   return data || [];
 }
 
+function eventTableHead() {
+  return `
+  <thead><tr>
+    <th>Crew</th>
+    <th>Nom de l'événement</th>
+    <th>État</th>
+    <th>Date</th>
+    <th>Lieu</th>
+    <th></th>
+  </tr></thead>`;
+}
+
 function eventRowHTML(ev) {
   const readonly = !canEdit();
+  const collectifNom = ev.collectifs ? ev.collectifs.nom : "";
+  const c = crewColor(collectifNom);
   return `
-  <div class="event-row ${readonly ? "readonly" : ""}" data-id="${ev.id}">
-    <div>
-      <select class="ev-nom-collectif" ${readonly ? "disabled" : ""}>${collectifOptions(ev.collectif_id)}</select>
-      <input class="ev-nom" type="text" value="${esc(ev.nom)}" placeholder="Nom de l'événement" ${readonly ? "disabled" : ""}>
-    </div>
-    <div>
-      <select class="ev-statut" ${readonly ? "disabled" : ""}>
-        ${["À faire", "Programmé", "Terminé", "Annulé"].map(s => `<option value="${s}" ${ev.statut === s ? "selected" : ""}>${s}</option>`).join("")}
-      </select>
-      <span class="status-pill ${statusClass(ev.statut)}">${ev.statut}</span>
-    </div>
-    <div>
-      <input class="ev-date" type="date" value="${ev.date_evenement || ""}" ${readonly ? "disabled" : ""}>
-      <div class="event-date-relative">${relativeDate(ev.date_evenement)}</div>
-    </div>
-    <div>
-      <input class="ev-lieu" type="text" value="${esc(ev.lieu || "")}" placeholder="Lieu" ${readonly ? "disabled" : ""}>
-    </div>
-    <div>
-      ${readonly ? "" : `<button class="btn btn-danger btn-sm ev-delete">Suppr.</button>`}
-    </div>
-  </div>`;
+  <tr data-id="${ev.id}">
+    <td class="${readonly ? "readonly" : ""}">
+      <div class="crew-badge-wrap">
+        <span class="crew-badge" style="background:${c.bg}; color:${c.fg};">${esc(collectifNom) || "—"}</span>
+        <select class="crew-select ev-nom-collectif" ${readonly ? "disabled" : ""}>${collectifOptions(ev.collectif_id)}</select>
+      </div>
+    </td>
+    <td class="${readonly ? "readonly" : ""}">
+      <input class="cell-input ev-nom" type="text" value="${esc(ev.nom)}" placeholder="Nom de l'événement" ${readonly ? "disabled" : ""}>
+    </td>
+    <td class="${readonly ? "readonly" : ""}">
+      <div class="status-select-wrap">
+        <span class="status-pill ${statusClass(ev.statut)}">${ev.statut}</span>
+        <select class="status-select ev-statut" ${readonly ? "disabled" : ""}>
+          ${["À faire", "Programmé", "Terminé", "Annulé"].map(s => `<option value="${s}" ${ev.statut === s ? "selected" : ""}>${s}</option>`).join("")}
+        </select>
+      </div>
+    </td>
+    <td class="${readonly ? "readonly" : ""}">
+      <div class="date-cell">
+        <input class="cell-input ev-date" type="date" value="${ev.date_evenement || ""}" ${readonly ? "disabled" : ""}>
+        <span class="event-date-relative">${relativeDate(ev.date_evenement)}</span>
+      </div>
+    </td>
+    <td class="${readonly ? "readonly" : ""}">
+      <input class="cell-input ev-lieu" type="text" value="${esc(ev.lieu || "")}" placeholder="Lieu" ${readonly ? "disabled" : ""}>
+    </td>
+    <td class="col-actions">
+      ${readonly ? "" : `<button class="btn btn-danger btn-sm row-delete ev-delete">Suppr.</button>`}
+    </td>
+  </tr>`;
 }
 
 function bindEventRowEvents(container) {
   if (!canEdit()) return;
-  container.querySelectorAll(".event-row").forEach(row => {
+  container.querySelectorAll("tr[data-id]").forEach(row => {
     const id = row.dataset.id;
     const save = async (field, value) => {
       const { error } = await client.from("evenements").update({ [field]: value, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) alert("Erreur : " + error.message);
-      if (field === "statut") renderTab(currentTab); // bascule éventuelle passés/à venir
+      else renderTab(currentTab); // rafraîchit pastille couleur / bascule passés-à venir
     };
     row.querySelector(".ev-nom").addEventListener("change", e => save("nom", e.target.value));
     row.querySelector(".ev-nom-collectif").addEventListener("change", e => save("collectif_id", e.target.value || null));
@@ -241,12 +282,14 @@ function bindEventRowEvents(container) {
 async function renderUpcoming() {
   const container = el("view-container");
   container.innerHTML = `
-    <div class="section-head"><h2>Événements à venir</h2></div>
-    ${canEdit() ? `<div class="add-inline">
-        <button class="btn btn-primary btn-sm" id="add-event-btn">+ Ajouter un événement</button>
-        <button class="btn btn-ghost btn-sm" id="add-collectif-btn">+ Nouveau collectif</button>
-      </div>` : ""}
-    <div class="card" id="events-list"></div>
+    <div class="toolbar">
+      <h2 style="font-family:var(--font-display); font-weight:400; font-size:1.4rem; margin:0;">Événements à venir</h2>
+      ${canEdit() ? `<div class="toolbar-right">
+          <button class="btn btn-ghost btn-sm" id="add-collectif-btn">+ Nouveau collectif</button>
+          <button class="btn btn-primary btn-sm" id="add-event-btn">+ Ajouter un événement</button>
+        </div>` : ""}
+    </div>
+    <div id="events-holder"></div>
   `;
   if (canEdit()) {
     el("add-event-btn").addEventListener("click", async () => {
@@ -258,13 +301,13 @@ async function renderUpcoming() {
   }
   const all = await fetchEvenements();
   const upcoming = all.filter(e => !["Terminé", "Annulé"].includes(e.statut));
-  const list = el("events-list");
+  const holder = el("events-holder");
   if (upcoming.length === 0) {
-    list.outerHTML = `<div class="empty-state" id="events-list">Aucun événement à venir pour le moment.</div>`;
+    holder.innerHTML = `<div class="empty-state">Aucun événement à venir pour le moment.</div>`;
     return;
   }
-  list.innerHTML = upcoming.map(eventRowHTML).join("");
-  bindEventRowEvents(list);
+  holder.innerHTML = `<div class="table-scroll"><table class="notion-table">${eventTableHead()}<tbody>${upcoming.map(eventRowHTML).join("")}</tbody></table></div>`;
+  bindEventRowEvents(holder);
 }
 
 async function renderPast() {
@@ -285,13 +328,14 @@ async function renderPast() {
   const years = Object.keys(byYear).sort((a, b) => b.localeCompare(a));
   groupsEl.innerHTML = years.map(y => `
     <div class="year-group">
-      <h3>${y}</h3>
-      <div class="card past-year-card" data-year="${y}"></div>
+      <h3>Événements terminés — ${y}</h3>
+      <div class="table-scroll past-year-card" data-year="${y}"></div>
     </div>
   `).join("");
   years.forEach(y => {
     const holder = groupsEl.querySelector(`.past-year-card[data-year="${y}"]`);
-    holder.innerHTML = byYear[y].sort((a, b) => (b.date_evenement || "").localeCompare(a.date_evenement || "")).map(eventRowHTML).join("");
+    const rows = byYear[y].sort((a, b) => (b.date_evenement || "").localeCompare(a.date_evenement || "")).map(eventRowHTML).join("");
+    holder.innerHTML = `<table class="notion-table">${eventTableHead()}<tbody>${rows}</tbody></table>`;
     bindEventRowEvents(holder);
   });
 }
