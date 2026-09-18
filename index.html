@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organisation d'Events HDF</title>
+<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ===================== ECRANS D'AUTHENTIFICATION ===================== -->
+<div id="auth-screen" class="auth-wrap hidden">
+  <div class="auth-card">
+    <h1 class="auth-title">Organisation<br>d'Events HDF</h1>
+    <p class="auth-sub" id="auth-sub">Connectez-vous pour accéder à l'agenda du collectif.</p>
+
+    <!-- Connexion -->
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="login-password">Mot de passe</label>
+        <input type="password" id="login-password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary">Se connecter</button>
+    </form>
+
+    <!-- Inscription -->
+    <form id="signup-form" class="hidden">
+      <div class="field">
+        <label for="signup-nom">Nom / pseudo</label>
+        <input type="text" id="signup-nom" required autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="signup-email">Email</label>
+        <input type="email" id="signup-email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="signup-password">Mot de passe</label>
+        <input type="password" id="signup-password" required minlength="6" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn btn-primary">Demander l'accès</button>
+    </form>
+
+    <div id="auth-status" class="status-msg hidden"></div>
+
+    <p class="auth-switch">
+      <span id="switch-to-signup">Pas encore de compte ? <a>Demander l'accès</a></span>
+      <span id="switch-to-login" class="hidden">Déjà un compte ? <a>Se connecter</a></span>
+    </p>
+  </div>
+</div>
+
+<!-- ===================== ECRAN "EN ATTENTE" ===================== -->
+<div id="pending-screen" class="auth-wrap hidden">
+  <div class="auth-card" style="text-align:center;">
+    <div class="pending-icon">⏳</div>
+    <h1 class="auth-title" style="font-size:1.4rem;">Demande envoyée</h1>
+    <p class="auth-sub">Votre demande d'accès est en attente de validation par l'administrateur du collectif. Revenez un peu plus tard.</p>
+    <button id="pending-logout" class="btn btn-ghost">Se déconnecter</button>
+  </div>
+</div>
+
+<!-- ===================== ECRAN "REFUSE" ===================== -->
+<div id="refused-screen" class="auth-wrap hidden">
+  <div class="auth-card" style="text-align:center;">
+    <div class="pending-icon">🚫</div>
+    <h1 class="auth-title" style="font-size:1.4rem;">Accès non accordé</h1>
+    <p class="auth-sub">Votre demande d'accès n'a pas été acceptée. Contactez l'administrateur du collectif si vous pensez qu'il s'agit d'une erreur.</p>
+    <button id="refused-logout" class="btn btn-ghost">Se déconnecter</button>
+  </div>
+</div>
+
+<!-- ===================== APPLICATION ===================== -->
+<div id="app-shell" class="app-shell hidden">
+  <header class="app-header">
+    <p class="app-logo">Events <span>HDF</span></p>
+    <div class="header-user">
+      <span id="header-name"></span>
+      <span id="header-role" class="role-pill"></span>
+      <button id="logout-btn" class="btn btn-ghost btn-sm">Déconnexion</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="upcoming">🗓️ À venir</button>
+    <button class="tab-btn" data-tab="past">📁 Passés</button>
+    <button class="tab-btn" data-tab="artistes">🎧 Artistes</button>
+    <button class="tab-btn" data-tab="photographes">📷 Photographes</button>
+    <button class="tab-btn hidden" id="tab-admin-btn" data-tab="admin">⚙️ Admin <span id="admin-badge" class="badge hidden">0</span></button>
+  </nav>
+
+  <main id="view-container"></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
