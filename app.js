@@ -39,6 +39,32 @@ function crewColor(nom) {
   for (let i = 0; i < nom.length; i++) hash = nom.charCodeAt(i) + ((hash << 5) - hash);
   return CREW_PALETTE[Math.abs(hash) % CREW_PALETTE.length];
 }
+
+// Palette proposée pour la pastille d'un NOUVEAU collectif créé depuis la fiche
+// (15 teintes x 2 nuances). Une fois choisie, la couleur est stockée en base
+// (collectifs.couleur) et prime sur l'ancienne palette par hash ci-dessus.
+const COLLECTIF_PALETTE = [
+  "#DC2626", "#991B1B", "#EA580C", "#9A3412", "#D97706", "#92400E",
+  "#CA8A04", "#854D0E", "#65A30D", "#3F6212", "#16A34A", "#166534",
+  "#059669", "#065F46", "#0D9488", "#115E59", "#0891B2", "#155E75",
+  "#0284C7", "#075985", "#2563EB", "#1E40AF", "#4F46E5", "#3730A3",
+  "#7C3AED", "#5B21B6", "#C026D3", "#86198F", "#DB2777", "#9D174D",
+];
+let selectedNewCollectifColor = COLLECTIF_PALETTE[0];
+function renderColorGrid() {
+  const grid = el("fiche-color-grid");
+  grid.innerHTML = COLLECTIF_PALETTE.map((hex, i) =>
+    `<button type="button" class="color-swatch${i === 0 ? " selected" : ""}" data-hex="${hex}" style="background:${hex};" aria-label="Couleur ${hex}"></button>`
+  ).join("");
+  selectedNewCollectifColor = COLLECTIF_PALETTE[0];
+  grid.querySelectorAll(".color-swatch").forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedNewCollectifColor = btn.dataset.hex;
+      grid.querySelectorAll(".color-swatch").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+    });
+  });
+}
 function relativeDate(dateStr) {
   if (!dateStr) return "Date à définir";
   const d = new Date(dateStr + "T00:00:00");
@@ -58,6 +84,9 @@ function canEdit() {
 }
 function isAdmin() {
   return currentProfile && currentProfile.role === "admin";
+}
+function ficheComplete(p) {
+  return !!(p && p.nom && p.prenom && p.telephone && p.collectif_id);
 }
 
 // ---------- Auth : formulaires ----------
@@ -107,6 +136,96 @@ el("pending-logout").addEventListener("click", () => client.auth.signOut());
 el("refused-logout").addEventListener("click", () => client.auth.signOut());
 el("logout-btn").addEventListener("click", () => client.auth.signOut());
 
+// ---------- Fiche de contact ----------
+let ficheEditMode = false;
+
+function clearFicheStatus() { const s = el("fiche-status"); s.className = "status-msg hidden"; s.textContent = ""; }
+function ficheStatus(msg, type = "error") {
+  const s = el("fiche-status");
+  s.className = "status-msg " + type;
+  s.textContent = msg;
+}
+
+function showFicheScreen(editMode = false) {
+  ficheEditMode = editMode;
+  hideAllScreens();
+  show("fiche-screen");
+  el("fiche-back-btn").classList.toggle("hidden", !editMode);
+  clearFicheStatus();
+
+  const sel = el("fiche-collectif");
+  sel.innerHTML = `<option value="">— Choisir —</option>` +
+    collectifsCache.map(c => `<option value="${c.id}">${esc(c.nom)}</option>`).join("") +
+    `<option value="__new__">+ Nouveau collectif…</option>`;
+
+  if (editMode && currentProfile) {
+    el("fiche-prenom").value = currentProfile.prenom || "";
+    el("fiche-nom").value = currentProfile.nom || "";
+    el("fiche-telephone").value = currentProfile.telephone || "";
+    sel.value = currentProfile.collectif_id || "";
+  } else {
+    el("fiche-form").reset();
+    sel.value = "";
+  }
+  hide("fiche-new-collectif-block");
+  renderColorGrid();
+}
+
+el("fiche-collectif").addEventListener("change", (e) => {
+  el("fiche-new-collectif-block").classList.toggle("hidden", e.target.value !== "__new__");
+});
+
+el("fiche-back-btn").addEventListener("click", () => {
+  hideAllScreens(); show("app-shell"); renderSidebar(); renderTab(currentTab);
+});
+
+el("fiche-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  clearFicheStatus();
+  const prenom = el("fiche-prenom").value.trim();
+  const nom = el("fiche-nom").value.trim();
+  const telephone = el("fiche-telephone").value.trim();
+  const collectifSel = el("fiche-collectif").value;
+
+  if (!prenom || !nom || !telephone || !collectifSel) {
+    ficheStatus("Merci de remplir tous les champs."); return;
+  }
+
+  let collectifId = collectifSel;
+  if (collectifSel === "__new__") {
+    const newNom = el("fiche-new-collectif-nom").value.trim();
+    if (!newNom) { ficheStatus("Merci d'indiquer le nom du nouveau collectif."); return; }
+    const { data: newId, error: cErr } = await client.rpc("create_collectif_if_needed", {
+      p_nom: newNom, p_couleur: selectedNewCollectifColor,
+    });
+    if (cErr) { ficheStatus("Erreur : " + cErr.message); return; }
+    collectifId = newId;
+  }
+
+  const { error } = await client.rpc("update_my_fiche", {
+    p_nom: nom, p_prenom: prenom, p_telephone: telephone, p_collectif_id: collectifId,
+  });
+  if (error) { ficheStatus("Erreur : " + error.message); return; }
+
+  currentProfile = { ...currentProfile, nom, prenom, telephone, collectif_id: collectifId };
+  await loadCollectifs();
+  hideAllScreens(); show("app-shell");
+  renderSidebar();
+  if (isAdmin()) { show("tab-admin-btn"); refreshAdminBadge(); } else hide("tab-admin-btn");
+  renderTab(currentTab);
+});
+
+el("sidebar-edit-fiche").addEventListener("click", () => showFicheScreen(true));
+
+function renderSidebar() {
+  const roleLabel = { admin: "Administrateur", membre: "Membre", invite: "Invité" }[currentProfile.role];
+  el("sidebar-role-badge").textContent = roleLabel;
+  el("sidebar-role-badge").className = "role-pill " + currentProfile.role;
+  el("sidebar-name").textContent = `${currentProfile.prenom || ""} ${currentProfile.nom || ""}`.trim() || currentProfile.email;
+  const collectif = collectifsCache.find(c => c.id === currentProfile.collectif_id);
+  el("sidebar-collectif").textContent = collectif ? collectif.nom : "";
+}
+
 // ---------- Cycle de vie session ----------
 async function boot() {
   const { data: { session } } = await client.auth.getSession();
@@ -120,7 +239,7 @@ async function boot() {
 }
 
 function hideAllScreens() {
-  hide("auth-screen"); hide("pending-screen"); hide("refused-screen"); hide("app-shell");
+  hide("auth-screen"); hide("pending-screen"); hide("refused-screen"); hide("fiche-screen"); hide("app-shell");
 }
 
 function showAuthScreen() {
@@ -143,16 +262,20 @@ async function handleSession(session) {
   if (profile.statut_demande === "en_attente") { hideAllScreens(); show("pending-screen"); return; }
   if (profile.statut_demande === "refuse") { hideAllScreens(); show("refused-screen"); return; }
 
+  await loadCollectifs();
+
+  if (!ficheComplete(profile)) {
+    showFicheScreen(false);
+    return;
+  }
+
   hideAllScreens();
   show("app-shell");
-  el("header-name").textContent = profile.nom || profile.email;
-  el("header-role").textContent = { admin: "Administrateur", membre: "Membre", invite: "Invité" }[profile.role];
-  el("header-role").className = "role-pill " + profile.role;
+  renderSidebar();
 
   if (isAdmin()) { show("tab-admin-btn"); refreshAdminBadge(); }
   else hide("tab-admin-btn");
 
-  await loadCollectifs();
   renderTab(currentTab);
 }
 
@@ -199,7 +322,7 @@ async function addCollectif() {
 async function fetchEvenements() {
   const { data, error } = await client
     .from("evenements")
-    .select("*, collectifs(nom)")
+    .select("*, collectifs(nom, couleur)")
     .order("date_evenement", { ascending: true });
   if (error) { console.error(error); return []; }
   return data || [];
@@ -220,7 +343,8 @@ function eventTableHead() {
 function eventRowHTML(ev) {
   const readonly = !canEdit();
   const collectifNom = ev.collectifs ? ev.collectifs.nom : "";
-  const c = crewColor(collectifNom);
+  const collectifCouleur = ev.collectifs ? ev.collectifs.couleur : null;
+  const c = collectifCouleur ? { bg: collectifCouleur, fg: "#f5f5f5" } : crewColor(collectifNom);
   return `
   <tr data-id="${ev.id}">
     <td class="${readonly ? "readonly" : ""}">

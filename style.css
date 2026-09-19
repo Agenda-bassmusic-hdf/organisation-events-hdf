@@ -128,14 +128,52 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   color:var(--text); margin:0;
 }
 .app-logo span{ color:var(--accent); }
+.app-subtitle{ margin:2px 0 0; font-size:.78rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; }
 .header-user{ display:flex; align-items:center; gap:12px; font-size:.85rem; color:var(--text-muted); }
 .role-pill{
+  display:inline-block;
   font-size:.72rem; text-transform:none; padding:3px 9px; border-radius:999px;
   border:1px solid var(--border); color:var(--text);
 }
 .role-pill.admin{ border-color:var(--accent); color:var(--accent); }
 .role-pill.membre{ border-color:var(--accent-2); color:var(--accent-2); }
 .role-pill.invite{ border-color:var(--border); color:var(--text-muted); }
+
+/* ---------- Corps de l'appli : barre latérale + colonne de contenu ---------- */
+.app-body{ display:flex; flex:1; min-height:0; align-items:stretch; }
+.app-sidebar{
+  width:230px; flex-shrink:0; padding:22px 18px;
+  border-right:1px solid var(--border); background:var(--surface);
+  display:flex; flex-direction:column; gap:10px;
+}
+.app-sidebar .role-pill{ align-self:flex-start; }
+.sidebar-identity{ display:flex; flex-direction:column; gap:2px; margin-top:4px; }
+.sidebar-identity strong{ font-size:1.05rem; }
+.sidebar-collectif{ font-size:.85rem; color:var(--text-muted); }
+.link-btn{
+  margin-top:10px; align-self:flex-start; background:none; border:none; cursor:pointer;
+  color:var(--accent-2); font-size:.82rem; padding:0; text-decoration:underline;
+}
+.link-btn:hover{ color:var(--text); }
+.app-main-col{ flex:1; display:flex; flex-direction:column; min-width:0; }
+.app-main-col main{ margin:0; }
+
+@media (max-width: 720px){
+  .app-body{ flex-direction:column; }
+  .app-sidebar{
+    width:auto; flex-direction:row; align-items:center; flex-wrap:wrap;
+    border-right:none; border-bottom:1px solid var(--border); padding:12px 14px;
+  }
+  .sidebar-identity{ margin-top:0; }
+}
+
+/* ---------- Sélecteur de couleur (pastille de collectif) ---------- */
+.color-swatch-grid{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.color-swatch{
+  width:28px; height:28px; border-radius:50%; border:2px solid transparent;
+  cursor:pointer; padding:0;
+}
+.color-swatch.selected{ outline:2px solid var(--text); outline-offset:2px; }
 
 nav.tabs{
   display:flex; gap:4px; padding:8px 16px; background:var(--surface);

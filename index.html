@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Organisation d'Events HDF</title>
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -75,30 +75,77 @@
   </div>
 </div>
 
+<!-- ===================== ECRAN "FICHE DE CONTACT" ===================== -->
+<div id="fiche-screen" class="auth-wrap hidden">
+  <div class="auth-card" style="max-width:460px;">
+    <h1 class="auth-title" style="font-size:1.4rem;">Complétez votre fiche</h1>
+    <p class="auth-sub">Ces informations sont nécessaires avant de pouvoir remplir l'agenda. Fiche personnelle, modifiable à tout moment.</p>
+    <form id="fiche-form">
+      <div class="field">
+        <label for="fiche-prenom">Prénom</label>
+        <input type="text" id="fiche-prenom" required autocomplete="given-name">
+      </div>
+      <div class="field">
+        <label for="fiche-nom">Nom</label>
+        <input type="text" id="fiche-nom" required autocomplete="family-name">
+      </div>
+      <div class="field">
+        <label for="fiche-telephone">Téléphone</label>
+        <input type="tel" id="fiche-telephone" required autocomplete="tel">
+      </div>
+      <div class="field">
+        <label for="fiche-collectif">Collectif / organisation</label>
+        <select id="fiche-collectif" required></select>
+      </div>
+      <div class="field hidden" id="fiche-new-collectif-block">
+        <label for="fiche-new-collectif-nom">Nom du nouveau collectif</label>
+        <input type="text" id="fiche-new-collectif-nom">
+        <label style="margin-top:12px;">Couleur de la pastille</label>
+        <div class="color-swatch-grid" id="fiche-color-grid"></div>
+      </div>
+      <div id="fiche-status" class="status-msg hidden"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:6px;">Enregistrer ma fiche</button>
+      <button type="button" id="fiche-back-btn" class="btn btn-ghost hidden" style="width:100%; margin-top:8px;">Annuler</button>
+    </form>
+  </div>
+</div>
+
 <!-- ===================== APPLICATION ===================== -->
 <div id="app-shell" class="app-shell hidden">
   <header class="app-header">
-    <p class="app-logo">Events <span>HDF</span></p>
-    <div class="header-user">
-      <span id="header-name"></span>
-      <span id="header-role" class="role-pill"></span>
-      <button id="logout-btn" class="btn btn-ghost btn-sm">Déconnexion</button>
+    <div>
+      <p class="app-logo">Events <span>HDF</span></p>
+      <p class="app-subtitle">Agenda partagé des events Bassmusic Hauts-de-France</p>
     </div>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Se déconnecter</button>
   </header>
 
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="upcoming">🗓️ À venir</button>
-    <button class="tab-btn" data-tab="past">📁 Passés</button>
-    <button class="tab-btn" data-tab="artistes">🎧 Artistes</button>
-    <button class="tab-btn" data-tab="photographes">📷 Photographes</button>
-    <button class="tab-btn hidden" id="tab-admin-btn" data-tab="admin">⚙️ Admin <span id="admin-badge" class="badge hidden">0</span></button>
-  </nav>
+  <div class="app-body">
+    <aside id="app-sidebar" class="app-sidebar">
+      <span id="sidebar-role-badge" class="role-pill"></span>
+      <div class="sidebar-identity">
+        <strong id="sidebar-name"></strong>
+        <span id="sidebar-collectif" class="sidebar-collectif"></span>
+      </div>
+      <button id="sidebar-edit-fiche" class="link-btn">Modifier la fiche ✏️</button>
+    </aside>
 
-  <main id="view-container"></main>
+    <div class="app-main-col">
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="upcoming">🗓️ À venir</button>
+        <button class="tab-btn" data-tab="past">📁 Passés</button>
+        <button class="tab-btn" data-tab="artistes">🎧 Artistes</button>
+        <button class="tab-btn" data-tab="photographes">📷 Photographes</button>
+        <button class="tab-btn hidden" id="tab-admin-btn" data-tab="admin">⚙️ Admin <span id="admin-badge" class="badge hidden">0</span></button>
+      </nav>
+
+      <main id="view-container"></main>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
